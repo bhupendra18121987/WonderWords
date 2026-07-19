@@ -319,20 +319,27 @@ button:focus-visible {
 
 .age-screen-match {
   padding: 0;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
+  /* Break out of the `.app` container's padding on all four sides so the
+     purple gradient reaches the true viewport edges. BottomNav is
+     position:fixed, so it will float over the bottom of the shell. */
+  margin: -70px -8px calc(-1 * (env(safe-area-inset-bottom, 0px) + 96px));
+  min-height: 100vh;
 }
 
 .age-focus-shell {
-  width: min(390px, 100%);
-  height: min(92vh, 780px);
-  border-radius: 30px;
+  width: 100%;
+  min-height: 100vh;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(180deg, #c8a3ff 0%, #dcc4ff 22%, #fff6e2 46%, #fff9ed 66%, #fffaf0 100%);
-  border: 1px solid rgba(124, 58, 237, 0.16);
-  box-shadow: var(--shadow-strong);
-  padding: 18px 18px 150px;
+  background: linear-gradient(180deg, #8a4ff0 0%, #6b2fd5 100%);
+  border: none;
+  box-shadow: none;
+  /* Reserve the bottom 110px for the fixed BottomNav that overlays this
+     screen, so the dots and hills don't hide underneath it. */
+  padding: 60px 20px 130px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -389,9 +396,10 @@ button:focus-visible {
 .age-focus-prompt {
   margin: 0 0 16px;
   text-align: center;
-  color: #21205a;
+  color: #ffffff;
   font-size: clamp(1rem, 3vw, 1.2rem);
   font-weight: 900;
+  text-shadow: 0 1px 0 rgba(30, 15, 110, 0.4);
 }
 
 .age-focus-stack {
@@ -506,7 +514,8 @@ button:focus-visible {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Sit above the fixed BottomNav so the green hills stay fully visible. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
   height: 200px;
   pointer-events: none;
   z-index: 1;
@@ -523,7 +532,8 @@ button:focus-visible {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 22px;
+  /* Sit above the fixed BottomNav. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
   display: flex;
   justify-content: center;
   gap: 8px;
