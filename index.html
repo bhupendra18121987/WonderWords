@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Content-Security-Policy locks the app down to only load resources
+      from our own bundle, plus the Google Translate TTS fallback endpoint
+      used for Hindi speech when no local OS voice is installed.
+
+      - default-src 'self'                    → same-origin default
+      - script-src 'self'                     → only bundled JS
+      - style-src 'self' 'unsafe-inline'      → framer-motion injects inline styles
+      - img-src 'self' data:                  → favicon + inline data URIs
+      - media-src 'self' https://translate.google.com  → Google TTS <audio>
+      - connect-src 'self' https://translate.google.com → fetches
+      - font-src 'self'                       → no external fonts
+      - frame-ancestors 'none'                → nobody can embed us in an iframe
+      - base-uri 'self'                       → prevent <base href> hijacking
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' https://translate.google.com; connect-src 'self' https://translate.google.com; font-src 'self'; frame-ancestors 'none'; base-uri 'self';" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffcf5c" />
+    <meta name="description" content="WonderWords — a fun and colorful word search learning game for kids aged 3-8." />
+    <title>WonderWords — Kids Word Search</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
