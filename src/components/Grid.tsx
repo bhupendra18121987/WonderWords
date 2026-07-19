@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Cell, Language } from '../core/types';
 import { lineBetween, readSelection } from '../core/puzzleGenerator';
 import { isVowelForLang } from '../core/languages';
@@ -27,7 +27,7 @@ interface GridProps {
  * Interactive word-search grid. Supports mouse & touch drag selection,
  * keyboard activation, and highlights for found / hint / wrong cells.
  */
-export default function Grid({
+function Grid({
   grid,
   foundCells = [],
   foundGroups = [],
@@ -222,3 +222,6 @@ export default function Grid({
     </div>
   );
 }
+
+
+export default memo(Grid);

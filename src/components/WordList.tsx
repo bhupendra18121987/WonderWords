@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WordEntry } from '../core/types';
 import { colorForWordIndex } from './GameAssets';
@@ -7,7 +8,7 @@ interface WordListProps {
   foundWords: string[];
 }
 
-export default function WordList({ items, foundWords }: WordListProps) {
+function WordList({ items, foundWords }: WordListProps) {
   const foundSet = new Set(foundWords.map((w) => w.toUpperCase()));
   return (
     <div className="word-list" role="list" aria-label="Words to find">
@@ -38,3 +39,6 @@ export default function WordList({ items, foundWords }: WordListProps) {
     </div>
   );
 }
+
+
+export default memo(WordList);

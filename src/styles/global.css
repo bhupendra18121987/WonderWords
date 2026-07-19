@@ -4579,46 +4579,6 @@ body.modal-open {
   all: unset;
 }
 
-.ribbon-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 4px 0 10px;
-}
-
-.ribbon-garnish {
-  font-size: 1.3rem;
-  margin-bottom: -8px;
-  z-index: 2;
-}
-
-.ribbon-main {
-  position: relative;
-  background: #7c3aed;
-  border-radius: 999px;
-  padding: 10px 30px;
-  color: #fff;
-  box-shadow: var(--shadow);
-}
-
-.ribbon-main h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #fff;
-}
-
-.ribbon-notch {
-  position: absolute;
-  top: 56%;
-  width: 14px;
-  height: 14px;
-  background: #6d28d9;
-  transform: rotate(45deg);
-}
-
-.ribbon-notch.left { left: -6px; }
-.ribbon-notch.right { right: -6px; }
-
 .rewards-screen,
 .profile-screen {
   gap: 12px;
