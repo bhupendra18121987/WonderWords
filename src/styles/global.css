@@ -4341,7 +4341,7 @@ body.modal-open {
 .home-hero {
   width: 100%;
   max-width: 940px;
-  margin: 0 auto;
+  margin: 44px 0 auto;
   border-radius: 22px;
   padding: 12px 16px;
   display: grid;

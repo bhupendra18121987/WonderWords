@@ -33,7 +33,6 @@ import {
   STORAGE_KEYS
 } from './core/constants';
 import { resetScoresOnly, restartAtLevelOne, sanitizeProgress } from './core/gameLogic';
-import { isVowelForLang } from './core/languages';
 import { getLanguageConfig } from './core/languages';
 import { t } from './core/i18n';
 import type { AgeGroupKey, Language, LearnedWord, Progress, Settings } from './core/types';
@@ -248,15 +247,8 @@ export default function App() {
     (letter: string) => {
       if (!letter) return;
       speak(letter, { rate: 0.9, pitch: 1.2, interrupt: true });
-      if (settings.announceLetterType) {
-        // Queue the type label right after the letter so it plays naturally.
-        const label = isVowelForLang(letter, settings.language)
-          ? langCfg.vowelLabel
-          : langCfg.consonantLabel;
-        speak(label, { rate: 0.9, pitch: 1.15, interrupt: false });
-      }
     },
-    [speak, settings.announceLetterType, settings.language, langCfg]
+    [speak]
   );
 
   const speakText = useCallback(
