@@ -1,6 +1,16 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
+import {
+  BigStar,
+  Bunting,
+  CheerPanda,
+  ConfettiBits,
+  HomeIcon,
+  RefreshIcon,
+  RewardCoin,
+  RewardStar
+} from './CelebrationAssets';
 
 interface CelebrationProps {
   praise: string;
@@ -8,71 +18,44 @@ interface CelebrationProps {
   wordsFound: number;
   /** Overrides the default "You found N words!" line. */
   subtitle?: string;
-  /** Text on the primary button. Defaults to "Next puzzle →". */
+  /** Text on the primary button. Defaults to "Awesome!". */
   nextLabel?: string;
+  /** Text on the secondary (Home) button. Defaults to "Home". */
+  homeLabel?: string;
   /** Set to false to hide the 3-star row (useful for non-puzzle wins). */
   showStars?: boolean;
+  /** Points earned this level (default: stars × 20). */
+  pointsEarned?: number;
+  /** Coins earned this level (default: stars × 8 rounded). */
+  coinsEarned?: number;
   onNext: () => void;
   onHome: () => void;
 }
 
-// Bright, kid-friendly palette used for all confetti + firework bursts.
-const PARTY_COLORS = [
-  '#ff8fab', // pink
-  '#ffcf5c', // gold
-  '#58c896', // green
-  '#6ec9ff', // blue
-  '#d19cff', // purple
-  '#ff9f43', // orange
-  '#ffffff'  // white sparkle
-];
-
-// The stars that rain down behind the modal. Emoji is easier than SVG
-// for varied shapes (⭐ 🌟 ✨ 🎊 🎉) and looks great across devices.
-const RAINING_EMOJIS = ['⭐', '🌟', '✨', '🎊', '🎉', '💫'];
-
-interface RainingStar {
-  emoji: string;
-  left: string;
-  delay: number;
-  duration: number;
-  size: number;
-  drift: number;
-}
-
-/**
- * Build a randomised set of falling stars ONCE per mount, so their
- * positions don't jitter between renders.
- */
-function buildRainingStars(count: number): RainingStar[] {
-  const out: RainingStar[] = [];
-  for (let i = 0; i < count; i++) {
-    out.push({
-      emoji: RAINING_EMOJIS[i % RAINING_EMOJIS.length]!,
-      left: `${(i * 7 + Math.random() * 6) % 100}%`,
-      delay: Math.random() * 2.5,
-      duration: 3 + Math.random() * 2,
-      size: 20 + Math.random() * 22,
-      drift: (Math.random() * 40) - 20
-    });
-  }
-  return out;
-}
+const PARTY_COLORS = ['#ff8fab', '#ffcf5c', '#7fe25a', '#6ec5ff', '#c088ff', '#ff9754'];
 
 export default function Celebration({
   praise,
   stars,
   wordsFound,
   subtitle,
-  nextLabel = 'Next puzzle →',
+  nextLabel = 'Awesome!',
+  homeLabel = 'Home',
   showStars = true,
+  pointsEarned,
+  coinsEarned,
   onNext,
   onHome
 }: CelebrationProps) {
-  const rainingStars = useMemo(() => buildRainingStars(24), []);
+  void praise;
+  void wordsFound;
+  void homeLabel;
+  void subtitle;
+  const earnedPoints = pointsEarned ?? Math.max(10, stars * 20);
+  const earnedCoins = coinsEarned ?? Math.max(4, stars * 8);
 
   useEffect(() => {
-    // ── Continuous side cannons for 2.5s ──
+    // Continuous side cannons for a short victory burst.
     const duration = 2500;
     const end = Date.now() + duration;
     let frameId = 0;
@@ -97,7 +80,6 @@ export default function Celebration({
     };
     frame();
 
-    // ── Discrete firework bursts at random points in the top half ──
     const timers = [200, 750, 1300, 1900, 2400].map((delay) =>
       setTimeout(() => {
         confetti({
@@ -107,17 +89,13 @@ export default function Celebration({
           ticks: 90,
           gravity: 0.9,
           scalar: 1.1,
-          origin: {
-            x: 0.15 + Math.random() * 0.7,
-            y: 0.15 + Math.random() * 0.35
-          },
+          origin: { x: 0.15 + Math.random() * 0.7, y: 0.15 + Math.random() * 0.35 },
           colors: PARTY_COLORS,
           shapes: ['circle', 'square']
         });
       }, delay)
     );
 
-    // ── Grand finale burst ──
     const finale = setTimeout(() => {
       confetti({
         particleCount: 200,
@@ -128,112 +106,108 @@ export default function Celebration({
       });
     }, 2800);
 
+    document.body.classList.add('modal-open');
+
     return () => {
       cancelAnimationFrame(frameId);
       timers.forEach(clearTimeout);
       clearTimeout(finale);
+      document.body.classList.remove('modal-open');
     };
   }, []);
 
   return (
-    <div className="overlay celebrate-overlay" role="dialog" aria-modal="true" aria-label="Level complete">
-      {/* Raining stars behind the modal */}
-      <div className="celebrate-stars" aria-hidden="true">
-        {rainingStars.map((s, i) => (
-          <motion.span
-            key={i}
-            className="celebrate-star"
-            style={{
-              left: s.left,
-              fontSize: s.size
-            }}
-            initial={{ y: '-15%', opacity: 0, rotate: 0 }}
-            animate={{
-              y: '115%',
-              x: [0, s.drift, 0, -s.drift, 0],
-              opacity: [0, 1, 1, 0.9, 0],
-              rotate: [0, 180, 360]
-            }}
-            transition={{
-              duration: s.duration,
-              delay: s.delay,
-              repeat: Infinity,
-              ease: 'linear'
-            }}
-          >
-            {s.emoji}
-          </motion.span>
-        ))}
+    <div className="overlay level-complete-overlay" role="dialog" aria-modal="true" aria-label="Level complete">
+      <div className="lc-confetti" aria-hidden="true">
+        <ConfettiBits />
+      </div>
+      <div className="lc-bunting-wrap" aria-hidden="true">
+        <Bunting />
       </div>
 
       <motion.div
-        className="modal celebrate-modal"
-        initial={{ scale: 0.4, opacity: 0, rotate: -8 }}
-        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 14 }}
+        className="lc-modal"
+        initial={{ scale: 0.6, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
       >
+        <motion.h1
+          className="lc-title"
+          initial={{ y: -10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+        >
+          Level<br />Complete!
+        </motion.h1>
+
         <motion.div
-          className="celebrate-hero"
-          animate={{
-            scale: [1, 1.15, 1, 1.12, 1],
-            rotate: [0, 12, -12, 8, 0]
-          }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          className="lc-panda"
+          animate={{ y: [0, -6, 0], rotate: [-2, 2, -2] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           aria-hidden="true"
         >
-          🏆
+          <CheerPanda />
         </motion.div>
 
-        <motion.h2
-          className="celebrate-praise"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          {praise}
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
-        >
-          {subtitle ?? `You found ${wordsFound} ${wordsFound === 1 ? 'word' : 'words'}!`}
-        </motion.p>
-
         {showStars && (
-          <div
-            className="celebrate-stars-row"
-            aria-label={`Earned ${stars} out of 3 stars`}
-          >
+          <div className="lc-stars" aria-label={`Earned ${stars} out of 3 stars`}>
             {[0, 1, 2].map((i) => (
               <motion.span
                 key={i}
-                className={`celebrate-star-badge ${i < stars ? 'won' : ''}`}
+                className={`lc-star ${i < stars ? 'won' : ''}`}
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{
-                  delay: 0.5 + i * 0.25,
+                  delay: 0.4 + i * 0.2,
                   type: 'spring',
                   stiffness: 260,
                   damping: 12
                 }}
               >
-                {i < stars ? '⭐' : '☆'}
+                <BigStar filled={i < stars} />
               </motion.span>
             ))}
           </div>
         )}
 
-        <motion.div
-          className="button-row"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2 }}
-        >
-          <button className="btn primary big" onClick={onNext}>{nextLabel}</button>
-          <button className="btn ghost" onClick={onHome}>Home</button>
-        </motion.div>
+        <div className="lc-earned-chip">You earned</div>
+
+        <div className="lc-rewards">
+          <div className="lc-reward">
+            <RewardStar />
+            <strong>+{earnedPoints}</strong>
+          </div>
+          <div className="lc-reward">
+            <RewardCoin />
+            <strong>+{earnedCoins}</strong>
+          </div>
+        </div>
+
+        <div className="lc-actions">
+          <button
+            type="button"
+            className="lc-icon-btn"
+            onClick={onHome}
+            aria-label={homeLabel}
+          >
+            <HomeIcon />
+          </button>
+          <button
+            type="button"
+            className="lc-primary-btn"
+            onClick={onNext}
+          >
+            {nextLabel}
+          </button>
+          <button
+            type="button"
+            className="lc-icon-btn"
+            onClick={onNext}
+            aria-label="Replay"
+          >
+            <RefreshIcon />
+          </button>
+        </div>
       </motion.div>
     </div>
   );

@@ -7,17 +7,29 @@ import WordSearchGame from './components/WordSearchGame';
 import WordReview from './components/WordReview';
 import AlphabetScreen from './components/AlphabetScreen';
 import TicTacToeGame from './components/TicTacToeGame';
+import MiniGamesHub, { type MiniGameId } from './components/MiniGamesHub';
+import LetterHuntGame from './components/LetterHuntGame';
+import TapColorGame from './components/TapColorGame';
+import MissingLetterGame from './components/MissingLetterGame';
+import AntonymPairsGame from './components/AntonymPairsGame';
+import AlphabetKaraoke from './components/AlphabetKaraoke';
+import TwoPlayerGame from './components/TwoPlayerGame';
+import TraceLetterGame from './components/TraceLetterGame';
 import Onboarding from './components/Onboarding';
 import SettingsPanel from './components/SettingsPanel';
 import ConfirmDialog from './components/ConfirmDialog';
 import BottomNav from './components/BottomNav';
-import Mascot from './components/Mascot';
+import TopBar from './components/TopBar';
+import RewardsScreen from './components/RewardsScreen';
+import ProfileScreen from './components/ProfileScreen';
 import useLocalStorage from './hooks/useLocalStorage';
 import useSpeech from './hooks/useSpeech';
 import useSound from './hooks/useSound';
 import {
   DEFAULT_PROGRESS,
   DEFAULT_SETTINGS,
+  DEFAULT_PROFILE_NAME,
+  DEFAULT_PROFILE_AVATAR,
   STORAGE_KEYS
 } from './core/constants';
 import { resetScoresOnly, restartAtLevelOne, sanitizeProgress } from './core/gameLogic';
@@ -34,7 +46,17 @@ type Screen =
   | 'game'
   | 'review'
   | 'alphabet'
-  | 'tictactoe';
+  | 'tictactoe'
+  | 'miniGames'
+  | 'letterHunt'
+  | 'tapColor'
+  | 'missingLetter'
+  | 'antonymPairs'
+  | 'karaoke'
+  | 'twoPlayer'
+  | 'trace'
+  | 'rewards'
+  | 'profile';
 
 export default function App() {
   // Persisted settings might be from an older release missing newer fields
@@ -80,6 +102,17 @@ export default function App() {
     STORAGE_KEYS.setupComplete,
     false
   );
+  const [lastMiniGame, setLastMiniGame] =
+    useLocalStorage<MiniGameId | null>('ww:lastMiniGame', null);
+
+  const [profileName, setProfileName] = useLocalStorage<string>(
+    STORAGE_KEYS.profileName,
+    DEFAULT_PROFILE_NAME
+  );
+  const [profileAvatar, setProfileAvatar] = useLocalStorage<string>(
+    STORAGE_KEYS.profileAvatar,
+    DEFAULT_PROFILE_AVATAR
+  );
 
   const [pendingAge, setPendingAge] = useState<AgeGroupKey | null>(ageGroup);
   const [pendingLang, setPendingLang] = useState<Language | null>(
@@ -87,9 +120,12 @@ export default function App() {
   );
   // Every launch starts on the splash — the tap also unlocks audio autoplay.
   const [screen, setScreen] = useState<Screen>('splash');
+  // When the child taps a specific level tile on the map we play THAT level
+  // rather than the default `progress.level` (which is the highest unlocked).
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [mascotMessage, setMascotMessage] = useState<string>('Hi! Ready to play?');
+  const [, setMascotMessage] = useState<string>('Hi! Ready to play?');
 
   // A single ConfirmDialog is used for the reset / restart actions so kids
   // never see the flat OS `window.confirm` popup.
@@ -151,7 +187,9 @@ export default function App() {
     if (!seenOnboarding) setShowOnboarding(true);
   };
 
-  const handlePlay = () => {
+  const handlePlay = (level?: number) => {
+    if (typeof level === 'number' && level > 0) setSelectedLevel(level);
+    else setSelectedLevel(null);
     setScreen('game');
     setMascotMessage(strings.letsFind);
   };
@@ -233,46 +271,60 @@ export default function App() {
 
   const learnedWords = progress.learnedWords;
 
-  // Splash and the setup-wizard steps are chrome-free — no top bar, no
-  // bottom nav, no mascot. Once the child lands on Home the full shell
-  // shows up.
-  const isImmersive = screen === 'splash' || (screen === 'languageSelect' && !setupComplete) || (screen === 'ageSelect' && !setupComplete);
+  // Fully-immersive screens hide both the app TopBar AND the BottomNav.
+  // Themed screens hide only the TopBar (they render their own purple
+  // header) but keep the BottomNav for tab-switching.
+  const isFullImmersive =
+    screen === 'splash' ||
+    screen === 'review' ||
+    screen === 'game' ||
+    screen === 'letterHunt' ||
+    screen === 'tapColor' ||
+    screen === 'missingLetter' ||
+    screen === 'antonymPairs' ||
+    screen === 'karaoke' ||
+    screen === 'twoPlayer' ||
+    screen === 'trace' ||
+    screen === 'tictactoe' ||
+    (screen === 'languageSelect' && !setupComplete) ||
+    (screen === 'ageSelect' && !setupComplete);
+
+  const hasThemedHeader =
+    screen === 'alphabet' ||
+    screen === 'miniGames' ||
+    screen === 'rewards' ||
+    screen === 'profile' ||
+    (screen === 'ageSelect' && setupComplete);
+
+  const hideTopBar = isFullImmersive || hasThemedHeader;
+  const hideBottomNav = isFullImmersive;
+  const isImmersive = isFullImmersive;
+
+  const navActive =
+    screen === 'miniGames' || screen === 'game' || screen === 'alphabet' ? 'levels' :
+    screen === 'rewards' ? 'rewards' :
+    screen === 'profile' ? 'profile' :
+    screen === 'ageSelect' ? 'age' :
+    'home';
 
   return (
     <div className={`app ${settings.highContrast ? 'high-contrast' : ''} ${isImmersive ? 'app-immersive' : ''}`}>
-      {!isImmersive && (
-        <header className="top-bar">
-          <div
-            className="brand"
-            onClick={() => setScreen(ageGroup ? 'home' : 'ageSelect')}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="logo" aria-hidden="true">W</span>
-            <span>WonderWords</span>
-          </div>
-          <div className="spacer" />
-          <button
-            className={`icon-btn ${settings.sound ? 'active' : ''}`}
-            onClick={() => setSettings((s) => ({ ...s, sound: !s.sound }))}
-            aria-label={settings.sound ? 'Mute sound' : 'Unmute sound'}
-            title="Sound"
-          >
-            {settings.sound ? '🔊' : '🔇'}
-          </button>
-          <button
-            className={`icon-btn ${settings.music ? 'active' : ''}`}
-            onClick={() => setSettings((s) => ({ ...s, music: !s.music }))}
-            aria-label={settings.music ? 'Stop music' : 'Play music'}
-            title="Music"
-          >
-            🎵
-          </button>
-        </header>
+      {!hideTopBar && (
+        <TopBar
+          language={settings.language}
+          stars={progress.stars}
+          onStarsPress={() => setScreen('rewards')}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenTour={() => setShowOnboarding(true)}
+        />
       )}
 
       {screen === 'splash' && (
-        <SplashScreen onStart={handleSplashStart} />
+        <SplashScreen
+          onStart={handleSplashStart}
+          onParents={() => setShowSettings(true)}
+          onToggleSound={() => setSettings((s) => ({ ...s, music: !s.music }))}
+        />
       )}
 
       {screen === 'languageSelect' && (
@@ -296,6 +348,7 @@ export default function App() {
           step={!setupComplete ? { current: 2, total: 2 } : undefined}
           onSelect={handleSelectAge}
           onStart={handleStart}
+          onBack={setupComplete ? () => setScreen('home') : undefined}
         />
       )}
 
@@ -307,17 +360,39 @@ export default function App() {
           onPlay={handlePlay}
           onReview={() => setScreen('review')}
           onAlphabet={() => setScreen('alphabet')}
-          onTicTacToe={() => setScreen('tictactoe')}
+          onMiniGames={() => setScreen('miniGames')}
           onChangeAge={() => setScreen('ageSelect')}
           onOnboarding={() => setShowOnboarding(true)}
           onRestartLevel={handleRestartFromLevelOne}
         />
       )}
 
+      {screen === 'rewards' && (
+        <RewardsScreen
+          language={settings.language}
+          progress={progress}
+          onBack={() => setScreen('home')}
+        />
+      )}
+
+      {screen === 'profile' && (
+        <ProfileScreen
+          ageGroup={ageGroup}
+          language={settings.language}
+          progress={progress}
+          profileName={profileName}
+          profileAvatar={profileAvatar}
+          onBack={() => setScreen('home')}
+          onChangeAge={() => setScreen('ageSelect')}
+          onProfileNameChange={setProfileName}
+          onProfileAvatarChange={setProfileAvatar}
+        />
+      )}
+
       {screen === 'game' && ageGroup && (
         <WordSearchGame
           ageGroup={ageGroup}
-          level={progress.level}
+          level={selectedLevel ?? progress.level}
           language={settings.language}
           settings={settings}
           progress={progress}
@@ -346,7 +421,9 @@ export default function App() {
           onBack={() => setScreen(ageGroup ? 'home' : 'ageSelect')}
           onSpeak={(letter, type) => {
             speak(letter, { rate: 0.9, pitch: 1.2, interrupt: true });
-            speak(type, { rate: 0.9, pitch: 1.15, interrupt: false });
+            if (settings.announceLetterType && type) {
+              speak(type, { rate: 0.9, pitch: 1.15, interrupt: false });
+            }
           }}
         />
       )}
@@ -355,12 +432,104 @@ export default function App() {
         <TicTacToeGame
           ageGroup={ageGroup}
           language={settings.language}
-          onExit={() => setScreen('home')}
+          onExit={() => setScreen('miniGames')}
           onSpeakText={speakText}
           onPlaySuccess={playSuccess}
           onPlayCelebration={playCelebration}
           onPlayError={playError}
           onSetMascotMessage={setMascotMessage}
+        />
+      )}
+
+      {screen === 'miniGames' && (
+        <MiniGamesHub
+          language={settings.language}
+          lastPlayed={lastMiniGame}
+          enabled={{
+            letterHunt: true,
+            tapColor: true,
+            missingLetter: true,
+            antonymPairs: true,
+            karaoke: true,
+            twoPlayer: true,
+            trace: true,
+            tictactoe: true
+          }}
+          onBack={() => setScreen('home')}
+          onPick={(id: MiniGameId) => {
+            setLastMiniGame(id);
+            if (id === 'letterHunt') setScreen('letterHunt');
+            else if (id === 'tapColor') setScreen('tapColor');
+            else if (id === 'missingLetter') setScreen('missingLetter');
+            else if (id === 'antonymPairs') setScreen('antonymPairs');
+            else if (id === 'karaoke') setScreen('karaoke');
+            else if (id === 'twoPlayer') setScreen('twoPlayer');
+            else if (id === 'trace') setScreen('trace');
+            else if (id === 'tictactoe') setScreen('tictactoe');
+          }}
+        />
+      )}
+
+      {screen === 'letterHunt' && ageGroup && (
+        <LetterHuntGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'tapColor' && ageGroup && (
+        <TapColorGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'missingLetter' && ageGroup && (
+        <MissingLetterGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'antonymPairs' && ageGroup && (
+        <AntonymPairsGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'karaoke' && (
+        <AlphabetKaraoke
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'twoPlayer' && ageGroup && (
+        <TwoPlayerGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakLetter={speakLetter}
+          speakText={speakText}
+        />
+      )}
+
+      {screen === 'trace' && ageGroup && (
+        <TraceLetterGame
+          ageGroup={ageGroup}
+          language={settings.language}
+          onExit={() => setScreen('miniGames')}
+          speakText={speakText}
         />
       )}
 
@@ -401,21 +570,17 @@ export default function App() {
         />
       )}
 
-      {!isImmersive && <Mascot face="🦉" message={mascotMessage} />}
-
-      {ageGroup && !isImmersive && screen !== 'ageSelect' && (
+      {ageGroup && !hideBottomNav && (screen !== 'ageSelect' || setupComplete) && (
         <BottomNav
-          active={screen === 'game' ? 'game' : screen === 'review' ? 'review' : screen === 'alphabet' ? 'alphabet' : 'home'}
+          active={navActive}
           language={settings.language}
-          learnedCount={progress.learnedWords.length}
           onNavigate={(target) => {
-            if (target === 'game') {
-              handlePlay();
-            } else {
-              setScreen(target);
-            }
+            if (target === 'home') setScreen('home');
+            else if (target === 'levels') setScreen('miniGames');
+            else if (target === 'rewards') setScreen('rewards');
+            else if (target === 'profile') setScreen('profile');
+            else if (target === 'age') setScreen('ageSelect');
           }}
-          onOpenSettings={() => setShowSettings(true)}
         />
       )}
     </div>

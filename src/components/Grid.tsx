@@ -3,9 +3,16 @@ import type { Cell, Language } from '../core/types';
 import { lineBetween, readSelection } from '../core/puzzleGenerator';
 import { isVowelForLang } from '../core/languages';
 
+interface FoundGroup {
+  cells: Cell[];
+  color: { bg: string; dark: string };
+}
+
 interface GridProps {
   grid: string[][];
   foundCells?: Cell[];
+  /** Per-word groups so each found word can render in its own colour. */
+  foundGroups?: FoundGroup[];
   hintCells?: Cell[];
   wrongCells?: Cell[];
   /** When true, vowel cells get a subtle color tint. */
@@ -23,6 +30,7 @@ interface GridProps {
 export default function Grid({
   grid,
   foundCells = [],
+  foundGroups = [],
   hintCells = [],
   wrongCells = [],
   highlightVowels = false,
@@ -47,6 +55,16 @@ export default function Grid({
     for (const c of foundCells) s.add(`${c.r},${c.c}`);
     return s;
   }, [foundCells]);
+
+  // Map each cell key to its word's colour so the grid can render coloured pills
+  // that mirror the chip palette above.
+  const foundColorMap = useMemo(() => {
+    const m = new Map<string, { bg: string; dark: string }>();
+    for (const g of foundGroups) {
+      for (const c of g.cells) m.set(`${c.r},${c.c}`, g.color);
+    }
+    return m;
+  }, [foundGroups]);
 
   const hintKeySet = useMemo(() => {
     const s = new Set<string>();
@@ -160,7 +178,7 @@ export default function Grid({
     <div
       ref={gridRef}
       className="grid"
-      style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}
+      style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}
       role="grid"
       aria-label="Word search puzzle"
     >
@@ -171,12 +189,16 @@ export default function Grid({
           const isHint = hintKeySet.has(key);
           const isWrong = wrongKeySet.has(key);
           const isSelecting = selectingKeySet.has(key);
+          const foundColor = foundColorMap.get(key);
           const classes = ['cell'];
           if (highlightVowels && isVowelForLang(letter, language)) classes.push('vowel-hint');
           if (isFound) classes.push('found');
           if (isHint && !isFound) classes.push('hint');
           if (isWrong) classes.push('wrong');
           if (isSelecting && !isFound) classes.push('selecting');
+          const style = foundColor
+            ? { background: foundColor.bg, borderColor: foundColor.dark, color: '#fff' }
+            : undefined;
           return (
             <div
               key={key}
@@ -186,6 +208,7 @@ export default function Grid({
               data-c={c}
               role="gridcell"
               tabIndex={0}
+              style={style}
               aria-label={`Row ${r + 1} column ${c + 1}: letter ${letter}${highlightVowels && isVowelForLang(letter, language) ? ' (vowel)' : ''}`}
               onMouseDown={(e) => handleMouseDown(e, r, c)}
               onTouchStart={(e) => handleTouchStart(e, r, c)}

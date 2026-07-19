@@ -3,6 +3,16 @@ import Grid from './Grid';
 import WordList from './WordList';
 import WordReveal from './WordReveal';
 import Celebration from './Celebration';
+import {
+  BackArrowIcon,
+  ClockIcon,
+  CoinIcon,
+  GameGrass,
+  LightbulbIcon,
+  SpeakerIcon,
+  SpeakerMuteIcon,
+  colorForWordIndex
+} from './GameAssets';
 import type {
   AgeGroupKey,
   Cell,
@@ -108,6 +118,9 @@ export default function WordSearchGame({
   >(null);
   const [mistakes, setMistakes] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const startTimeRef = useRef<number>(Date.now());
+  const MAX_HINTS = 3;
   const streakRef = useRef(0);
   // Synchronous guard so the completion effect only fires ONCE per puzzle.
   // State updates are async, so relying on `completion` alone lets React
@@ -136,11 +149,23 @@ export default function WordSearchGame({
     setCompletion(null);
     setMistakes(0);
     setHintsUsed(0);
+    setElapsed(0);
+    startTimeRef.current = Date.now();
     streakRef.current = 0;
     completingRef.current = false;
     completionPraiseRef.current = '';
     onSetMascotMessage(strings.findWordsMsg(puzzle.items.length));
   }, [puzzle, onSetMascotMessage, strings]);
+
+  // Tick the play timer once per second while the game is active. Stops
+  // when a completion modal is showing to freeze the final elapsed time.
+  useEffect(() => {
+    if (completion) return;
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [completion, puzzle]);
 
   // Cancel any pending celebration if the game screen unmounts (e.g. user
   // navigates Home mid-completion).
@@ -271,6 +296,7 @@ export default function WordSearchGame({
   ]);
 
   const useHint = useCallback(() => {
+    if (hintsUsed >= MAX_HINTS) return;
     const remaining = puzzle.placements.filter(
       (p) => !foundWordStrings.includes(p.word)
     );
@@ -280,9 +306,10 @@ export default function WordSearchGame({
     setHintsUsed((n) => n + 1);
     onSpeakText(target.word);
     setTimeout(() => setHintCells([]), 2400);
-  }, [puzzle.placements, foundWordStrings, onSpeakText]);
+  }, [puzzle.placements, foundWordStrings, onSpeakText, hintsUsed]);
 
   const newPuzzle = () => setSeed((s) => s + 1);
+  void newPuzzle; // retained for future "New puzzle" affordance
   const nextLevel = () => {
     setActiveLevel((l) => l + 1);
     setSeed((s) => s + 1);
@@ -293,23 +320,68 @@ export default function WordSearchGame({
       ? 0
       : Math.round((foundWords.length / puzzle.items.length) * 100);
 
+  // Colour each found word with the same palette entry the WordList chip uses
+  // so both surfaces read as the same "team".
+  const foundGroups = useMemo(
+    () =>
+      foundWords.map((f) => {
+        const idx = puzzle.items.findIndex((it) => it.word === f.word);
+        return {
+          cells: f.cells,
+          color: colorForWordIndex(idx >= 0 ? idx : 0)
+        };
+      }),
+    [foundWords, puzzle.items]
+  );
+
+  const timerLabel = useMemo(() => {
+    const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const ss = String(elapsed % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }, [elapsed]);
+
+  const hintsRemaining = Math.max(0, MAX_HINTS - hintsUsed);
+  const hintDisabled = hintsRemaining === 0;
+
   return (
-    <section className="screen">
-      <div className="game-wrap">
-        <div className="puzzle-card">
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
-            <span className="stat-pill">🧩 {strings.level} {activeLevel}</span>
-            <span className="stat-pill">
-              {foundWords.length}/{puzzle.items.length} {strings.found}
-            </span>
-          </div>
-          <div className="progress" aria-label={`Progress ${progressPct}%`}>
+    <section className="screen wordsearch-screen">
+      <header className="ws-topbar">
+        <button
+          type="button"
+          className="ws-back"
+          onClick={onExit}
+          aria-label={strings.home}
+        >
+          <BackArrowIcon />
+        </button>
+        <span className="ws-timer" aria-label={`Time ${timerLabel}`}>
+          <ClockIcon />
+          <strong>{timerLabel}</strong>
+        </span>
+        <span className="ws-coins" aria-label={`Score ${progress.stars}`}>
+          <CoinIcon />
+          <strong>{progress.stars}</strong>
+        </span>
+      </header>
+
+      <div className="ws-card">
+        <h2 className="ws-title">{strings.wordsToFind}</h2>
+
+        <div className="ws-chips">
+          <WordList items={puzzle.items} foundWords={foundWordStrings} />
+        </div>
+
+        <div className="ws-grid-wrap">
+          <div
+            className="ws-progress"
+            aria-label={`Progress ${progressPct}%`}
+          >
             <span style={{ width: `${progressPct}%` }} />
           </div>
-          <div style={{ height: 12 }} />
           <Grid
             grid={puzzle.grid}
             foundCells={allFoundCells}
+            foundGroups={foundGroups}
             hintCells={hintCells}
             wrongCells={wrongCells}
             highlightVowels={settings.highlightVowels}
@@ -318,20 +390,35 @@ export default function WordSearchGame({
             onSelectionAttempt={handleSelectionAttempt}
           />
         </div>
+      </div>
 
-        <aside className="side-panel">
-          <div className="card">
-            <h3>{strings.wordsToFind}</h3>
-            <WordList items={puzzle.items} foundWords={foundWordStrings} />
-          </div>
-          <div className="card">
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <button className="btn accent" onClick={useHint}>{strings.hint}</button>
-              <button className="btn ghost" onClick={newPuzzle}>{strings.newBtn}</button>
-              <button className="btn ghost" onClick={onExit}>{strings.home}</button>
-            </div>
-          </div>
-        </aside>
+      <footer className="ws-bottom">
+        <button
+          type="button"
+          className="ws-audio"
+          onClick={() => {/* sound toggle handled by parent settings; no-op UI feedback */}}
+          aria-label="Toggle sound"
+        >
+          {settings.sound ? <SpeakerIcon /> : <SpeakerMuteIcon />}
+        </button>
+
+        <div className="ws-bottom-spacer" />
+
+        <button
+          type="button"
+          className={`ws-hint ${hintDisabled ? 'disabled' : ''}`}
+          onClick={useHint}
+          disabled={hintDisabled}
+          aria-label={`${strings.hint} — ${hintsRemaining} left`}
+        >
+          <span className="ws-hint-icon"><LightbulbIcon /></span>
+          <span className="ws-hint-label">{strings.hint.replace(/^[💡\s]+/, '')}</span>
+          <span className="ws-hint-badge">{hintsRemaining}</span>
+        </button>
+      </footer>
+
+      <div className="ws-grass" aria-hidden="true">
+        <GameGrass />
       </div>
 
       {reveal && (

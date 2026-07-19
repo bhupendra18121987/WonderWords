@@ -1,5 +1,15 @@
+import { useEffect, useState } from 'react';
 import { getWordsData } from '../core/data';
 import type { AgeGroupKey, Language } from '../core/types';
+import {
+  BearAvatar,
+  BunnyAvatar,
+  HillsScene,
+  LionAvatar,
+  RibbonBanner,
+  StarMascot,
+  TopSparkles
+} from './AgeAssets';
 
 interface AgeSelectProps {
   selected: AgeGroupKey | null;
@@ -7,61 +17,93 @@ interface AgeSelectProps {
   step?: { current: number; total: number };
   onSelect: (key: AgeGroupKey) => void;
   onStart: () => void;
+  /** Optional back handler. Shown as a top-left circular button when set. */
+  onBack?: () => void;
 }
+
+const AVATARS = [<BearAvatar />, <BunnyAvatar />, <LionAvatar />];
+const TINTS = ['age-pill-green', 'age-pill-yellow', 'age-pill-blue'];
+const RANGES = ['3 – 4', '5 – 6', '7 – 8'];
 
 export default function AgeSelect({
   selected,
   language = 'en',
-  step,
   onSelect,
-  onStart
+  onStart,
+  onBack
 }: AgeSelectProps) {
   const wordsData = getWordsData(language);
-  const groups = Object.entries(wordsData.ageGroups) as [AgeGroupKey, typeof wordsData.ageGroups[AgeGroupKey]][];
+  const groups = Object.entries(wordsData.ageGroups) as [
+    AgeGroupKey,
+    typeof wordsData.ageGroups[AgeGroupKey]
+  ][];
   const isHi = language === 'hi';
+  const [pendingStart, setPendingStart] = useState<AgeGroupKey | null>(null);
+
+  const onPick = (key: AgeGroupKey) => {
+    setPendingStart(key);
+    onSelect(key);
+  };
+
+  useEffect(() => {
+    if (pendingStart && selected === pendingStart) {
+      setPendingStart(null);
+      onStart();
+    }
+  }, [pendingStart, selected, onStart]);
+
   return (
-    <section className="screen">
-      {step && (
-        <div className="wizard-progress" aria-label={`Step ${step.current} of ${step.total}`}>
-          {Array.from({ length: step.total }).map((_, i) => (
-            <span
-              key={i}
-              className={`wizard-dot ${i < step.current ? 'done' : i === step.current - 1 ? 'active' : ''}`}
-              aria-hidden="true"
-            />
+    <section className="screen age-screen-match">
+      <div className="age-focus-shell">
+        {onBack && (
+          <button
+            type="button"
+            className="age-back-btn"
+            onClick={onBack}
+            aria-label="Back"
+          >
+            ←
+          </button>
+        )}
+        <TopSparkles />
+        <div className="age-focus-star">
+          <StarMascot />
+        </div>
+
+        <RibbonBanner>{isHi ? 'चलो शुरू करें!' : "Let's Get Started!"}</RibbonBanner>
+
+        <p className="age-focus-prompt">{isHi ? 'अपनी उम्र चुनो' : 'Choose your age group'}</p>
+
+        <div className="age-focus-stack">
+          {groups.map(([key], idx) => (
+            <button
+              key={key}
+              type="button"
+              className={`age-focus-pill ${TINTS[idx % TINTS.length]} ${selected === key ? 'selected' : ''}`}
+              onClick={() => onPick(key)}
+              aria-pressed={selected === key}
+              aria-label={`${RANGES[idx % RANGES.length]} Years`}
+            >
+              <span className="age-focus-avatar">{AVATARS[idx % AVATARS.length]}</span>
+              <span className="age-focus-meta">
+                <strong>{RANGES[idx % RANGES.length]}</strong>
+                <em>{isHi ? 'साल' : 'Years'}</em>
+              </span>
+              <span className="age-focus-chevron" aria-hidden="true">›</span>
+            </button>
           ))}
         </div>
-      )}
-      <h1>{isHi ? 'अपनी उम्र चुनो, स्टार!' : 'Pick your age, superstar!'}</h1>
-      <p className="lead">
-        {isHi
-          ? 'हमें बताओ तुम कितने साल के हो, हम तुम्हारे लिए बिलकुल सही पहेलियाँ बनाएँगे।'
-          : "Tell us how old you are and we'll make puzzles just right for you."}
-      </p>
-      <div className="age-grid">
-        {groups.map(([key, group]) => (
-          <button
-            key={key}
-            type="button"
-            className={`age-card ${selected === key ? 'selected' : ''}`}
-            onClick={() => onSelect(key)}
-            aria-pressed={selected === key}
-          >
-            <span className="emoji" aria-hidden="true">{group.emoji}</span>
-            <span className="label">{group.label}</span>
-            <span className="desc">
-              {group.gridSize}×{group.gridSize} · {group.wordsPerPuzzle} {isHi ? 'शब्द' : 'words'}
-            </span>
-          </button>
-        ))}
+
+        <div className="age-focus-scene" aria-hidden="true">
+          <HillsScene />
+        </div>
+
+        <div className="age-focus-dots" aria-hidden="true">
+          <span />
+          <span className="on" />
+          <span />
+        </div>
       </div>
-      <button
-        className="btn primary big"
-        onClick={onStart}
-        disabled={!selected}
-      >
-        {isHi ? 'चलो खेलें! 🎈' : "Let's play! 🎈"}
-      </button>
     </section>
   );
 }

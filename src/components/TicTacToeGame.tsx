@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import ThemedScreen from './ThemedScreen';
 import Celebration from './Celebration';
 import { TOKEN_PAIRS, randomTokenPairIndex, type Token } from '../core/data/tokens';
 import {
@@ -152,7 +153,7 @@ export default function TicTacToeGame({
   };
 
   return (
-    <section className="screen ttt-screen">
+    <ThemedScreen title={strings.ticTacToeName} onBack={onExit} className="ttt-themed">
       <div className="ttt-header">
         <TokenBadge who={strings.you}   token={playerToken} language={language} active={turn === 1 && !result} tone="player" />
         <span className="ttt-vs" aria-hidden="true">VS</span>
@@ -232,11 +233,12 @@ export default function TicTacToeGame({
           wordsFound={3}
           showStars={false}
           nextLabel={strings.playAgain}
+          homeLabel={strings.home}
           onNext={startNewGame}
           onHome={onExit}
         />
       )}
-    </section>
+    </ThemedScreen>
   );
 }
 

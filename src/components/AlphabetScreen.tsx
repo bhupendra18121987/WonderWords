@@ -4,26 +4,34 @@ import { getLanguageConfig } from '../core/languages';
 import { LETTER_EXAMPLES, type LetterExample } from '../core/data/alphabetExamples';
 import { t } from '../core/i18n';
 import BarahkhadiView from './BarahkhadiView';
+import ThemedScreen from './ThemedScreen';
 import type { Language } from '../core/types';
 
 interface AlphabetScreenProps {
   language: Language;
   onBack: () => void;
-  onSpeak: (letter: string, type: 'vowel' | 'consonant' | string) => void;
+  onSpeak: (letter: string, type?: 'vowel' | 'consonant' | string) => void;
 }
 
 type Mode = 'letters' | 'barahkhadi';
+type LetterTab = 'vowels' | 'consonants';
 
 export default function AlphabetScreen({ language, onBack, onSpeak }: AlphabetScreenProps) {
   const cfg = getLanguageConfig(language);
   const strings = t(language);
   const entry = LETTER_EXAMPLES[language];
   const [mode, setMode] = useState<Mode>('letters');
+  const [letterTab, setLetterTab] = useState<LetterTab>('vowels');
+
+  const vowelLabel = cfg.vowelLabel === 'vowel' ? 'Vowels' : cfg.vowelLabel;
+  const consonantLabel = cfg.consonantLabel === 'consonant' ? 'Consonants' : cfg.consonantLabel;
 
   return (
-    <section className="screen">
-      <h1>{strings.vowelsAndConsonants} 🔤</h1>
-
+    <ThemedScreen
+      title={strings.navLetters}
+      onBack={onBack}
+      className="alphabet-themed"
+    >
       {entry.hasBarahkhadi && (
         <div className="alphabet-mode-tabs" role="tablist">
           <button
@@ -49,33 +57,50 @@ export default function AlphabetScreen({ language, onBack, onSpeak }: AlphabetSc
 
       {mode === 'letters' ? (
         <>
-          <div className="row" aria-hidden="true">
-            <span className="stat-pill">🌸 {strings.vowelsLabel(entry.vowels.length)}</span>
-            <span className="stat-pill">🔵 {strings.consonantsLabel(entry.consonants.length)}</span>
+          <div className="alphabet-pill-row" role="tablist" aria-label="Filter letters">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={letterTab === 'vowels'}
+              className={`alphabet-filter-pill vowel ${letterTab === 'vowels' ? 'active' : ''}`}
+              onClick={() => setLetterTab('vowels')}
+            >
+              🌸 {strings.vowelsLabel(entry.vowels.length)}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={letterTab === 'consonants'}
+              className={`alphabet-filter-pill consonant ${letterTab === 'consonants' ? 'active' : ''}`}
+              onClick={() => setLetterTab('consonants')}
+            >
+              🔵 {strings.consonantsLabel(entry.consonants.length)}
+            </button>
           </div>
 
-          <LetterSection
-            title={cfg.vowelLabel === 'vowel' ? 'Vowels' : cfg.vowelLabel}
-            letters={entry.vowels}
-            tone="vowel"
-            onSpeak={(l) => onSpeak(l.letter + (l.exampleWord ? '. ' + l.exampleWord : ''), 'vowel')}
-          />
-          <LetterSection
-            title={cfg.consonantLabel === 'consonant' ? 'Consonants' : cfg.consonantLabel}
-            letters={entry.consonants}
-            tone="consonant"
-            onSpeak={(l) => onSpeak(l.letter + (l.exampleWord ? '. ' + l.exampleWord : ''), 'consonant')}
-          />
+          {letterTab === 'vowels' ? (
+            <LetterSection
+              title={vowelLabel}
+              letters={entry.vowels}
+              tone="vowel"
+              onSpeak={(l) => onSpeak(l.letter + (l.exampleWord ? '. ' + l.exampleWord : ''), 'vowel')}
+            />
+          ) : (
+            <LetterSection
+              title={consonantLabel}
+              letters={entry.consonants}
+              tone="consonant"
+              onSpeak={(l) => onSpeak(l.letter + (l.exampleWord ? '. ' + l.exampleWord : ''), 'consonant')}
+            />
+          )}
         </>
       ) : (
         <BarahkhadiView
           language={language}
-          onSpeak={(akshara) => onSpeak(akshara, 'consonant')}
+          onSpeak={(akshara) => onSpeak(akshara)}
         />
       )}
-
-      <button className="btn primary" onClick={onBack}>← {strings.home}</button>
-    </section>
+    </ThemedScreen>
   );
 }
 

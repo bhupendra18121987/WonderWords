@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import type { WordEntry } from '../core/types';
+import { colorForWordIndex } from './GameAssets';
 
 interface WordListProps {
   items: WordEntry[];
@@ -11,8 +12,9 @@ export default function WordList({ items, foundWords }: WordListProps) {
   return (
     <div className="word-list" role="list" aria-label="Words to find">
       <AnimatePresence initial={false}>
-        {items.map((item) => {
+        {items.map((item, idx) => {
           const found = foundSet.has(item.word.toUpperCase());
+          const color = colorForWordIndex(idx);
           return (
             <motion.span
               key={item.word}
@@ -22,8 +24,12 @@ export default function WordList({ items, foundWords }: WordListProps) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
+              style={{
+                background: color.bg,
+                borderColor: color.dark,
+                color: '#fff'
+              }}
             >
-              <span className="em" aria-hidden="true">{item.emoji}</span>
               {item.word}
             </motion.span>
           );
